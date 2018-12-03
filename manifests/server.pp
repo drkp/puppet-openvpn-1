@@ -86,6 +86,8 @@
 # @param extca_server_key_file External CA: Path to the key file that corresponds to $extca_server_cert_file
 # @param extca_dh_file External CA: Path to your Dillie-Hellman parameter file. You will need to create one yourself. Make sure key-size matches the public key size of your CA-issued server certificate. Like this: openssl dhparam -out /path/to/dh.pem 2048 Note: This is only required if you are enabling $tls_server.
 # @param extca_tls_auth_key_file External CA: If you are enabling $extca_enabled and $tls_auth, you will also need to create  the tls-auth key file and specify its location here. The file can be created like this: openvpn --genkey --secret /path/to/ta.key. Note: you will need to distribute this file to your clients as well.
+# @param auth_user_pass_file Path to file containing user and password for password authentication
+# @param ca_file Path to CA file. Needed for password authentication
 # @param autostart  Enable autostart for server if openvpn::autostart_all is false.
 # @param ns_cert_type Enable or disable use of ns-cert-type for the session. Generally used with client configuration Deprecated in OpenVPN 2.4 and replaced with remote-cert-tls
 # @param remote_cert_tls Enable or disable use of remote-cert-tls for the session. Generally used with client configuration
@@ -205,6 +207,8 @@ define openvpn::server (
   Optional[String] $extca_server_key_file                           = undef,
   Optional[String] $extca_dh_file                                   = undef,
   Optional[String] $extca_tls_auth_key_file                         = undef,
+  Optional[String] $auth_user_pass_file                             = undef,  
+  Optional[String] $ca_file                                         = undef,
   Optional[Boolean] $autostart                                      = undef,
   Boolean $ns_cert_type                                             = true,
   Boolean $remote_cert_tls                                          = false,
@@ -293,6 +297,9 @@ define openvpn::server (
   if !$remote {
     if !$shared_ca and !$extca_enabled {
       # VPN Server Mode
+      if $auth_user_pass_file == undef {
+        fail('auth_user_pass_file can only be used in client mode')
+      }
       if $country == undef {
         fail('country has to be specified in server mode')
       }
@@ -357,6 +364,9 @@ define openvpn::server (
   } else {
     # VPN Client Mode
     $ca_common_name = $name
+    if $auth_user_pass_file != undef and $ca_file == undef {
+        fail('ca_file must be specified when using auth_user_pass_file')
+    }  
 
     file { "${etc_directory}/openvpn/${name}/keys":
       ensure  => directory,

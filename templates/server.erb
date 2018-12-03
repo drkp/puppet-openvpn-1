@@ -15,6 +15,10 @@ remote <%= rem %>
 server-poll-timeout <%= @server_poll_timeout %>
 <% end -%>
 <% end -%>
+<% if @auth_user_pass_file -%>
+auth-user-pass <%= @auth_user_pass_file %>
+ca <%= @ca_file %>
+<% else -%>
 <% if @extca_enabled -%>
 ca <%= @extca_ca_cert_file %>
 cert <%= @extca_server_cert_file %>
@@ -45,6 +49,7 @@ dh <%= @etc_directory -%>/openvpn/<%= @ca_name %>/keys/dh.pem
 <%   unless @remote or !@crl_verify -%>
 crl-verify <%= @etc_directory -%>/openvpn/<%= @ca_name %>/crl.pem
 <%   end -%>
+<% end -%>
 <% end -%>
 <% if @proto == 'tcp' -%>
 proto <%= @proto %>-server
