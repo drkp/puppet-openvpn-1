@@ -138,7 +138,7 @@ define openvpn::server (
   Variant[Boolean, String] $logfile                                 = false,
   String $port                                                      = '1194',
   Optional[String] $portshare                                       = undef,
-  Enum['tcp', 'udp'] $proto                                         = 'tcp',
+  Enum['tcp', 'tcp4', 'tcp6', 'udp', 'udp4', 'udp6'] $proto         = 'tcp',
   Enum['1', '2', '3', ''] $status_version                           = '',
   String $status_log                                                = "/var/log/openvpn/${name}-status.log",
   String $server                                                    = '',
@@ -337,11 +337,26 @@ define openvpn::server (
           period => $crl_renew_schedule_period,
           repeat => $crl_renew_schedule_repeat,
         }
-        exec { "renew crl.pem on ${name}":
-          command  => ". ./vars && KEY_CN='' KEY_OU='' KEY_NAME='' KEY_ALTNAMES='' openssl ca -gencrl -out ${openvpn::etc_directory}/openvpn/${name}/crl.pem -config ${openvpn::etc_directory}/openvpn/${name}/easy-rsa/openssl.cnf",
-          cwd      => "${openvpn::etc_directory}/openvpn/${name}/easy-rsa",
-          provider => 'shell',
-          schedule => "renew crl.pem schedule on ${name}",
+        case $openvpn::easyrsa_version {
+          '2.0': {
+            exec { "renew crl.pem on ${name}":
+              command  => ". ./vars && KEY_CN='' KEY_OU='' KEY_NAME='' KEY_ALTNAMES='' openssl ca -gencrl -out ${openvpn::etc_directory}/openvpn/${name}/crl.pem -config ${openvpn::etc_directory}/openvpn/${name}/easy-rsa/openssl.cnf",
+              cwd      => "${openvpn::etc_directory}/openvpn/${name}/easy-rsa",
+              provider => 'shell',
+              schedule => "renew crl.pem schedule on ${name}",
+            }
+          }
+          '3.0': {
+            exec { "renew crl.pem on ${name}":
+              command  => ". ./vars && EASYRSA_REQ_CN='' EASYRSA_REQ_OU='' openssl ca -gencrl -out ${etc_directory}/openvpn/${name}/crl.pem -config ${etc_directory}/openvpn/${name}/easy-rsa/openssl.cnf",
+              cwd      => "${openvpn::etc_directory}/openvpn/${name}/easy-rsa",
+              provider => 'shell',
+              schedule => "renew crl.pem schedule on ${name}",
+            }
+          }
+          default: {
+            fail("unexepected value for EasyRSA version, got '${openvpn::easyrsa_version}', expect 2.0 or 3.0.")
+          }
         }
       }
     } elsif !$extca_enabled {
